@@ -1,5 +1,5 @@
 // Kasa Cepte — çevrimdışı çalışma
-const CACHE = "kasacepte-v2";
+const CACHE = "kasacepte-v3";
 const SHELL = ["./", "index.html", "app.js", "store.js", "config.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 

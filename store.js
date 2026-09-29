@@ -51,6 +51,20 @@ export async function createStore() {
       return F.setDoc(dayDoc(iso), { tarih: iso, adisyonlar: list, toplam, guncelleme: new Date().toISOString() });
     },
     setOran: oran => F.setDoc(userDoc(), { oran }, { merge: true }),
+    setHedef: hedef => F.setDoc(userDoc(), { hedef }, { merge: true }),
+    // Birikim: kullanicilar/{uid}/birikim/{YYYY-AA} — ay başına bir belge
+    subscribeSavings(cb) {
+      return F.onSnapshot(F.collection(db, "kullanicilar", uid, "birikim"), snap => {
+        const out = {};
+        snap.forEach(d => { const v = d.data(); if (v && (v.kalemler || []).length) out[d.id] = v.kalemler; });
+        cb(out);
+      }, () => {});
+    },
+    saveSavings(ym, list) {
+      const ref = F.doc(db, "kullanicilar", uid, "birikim", ym);
+      if (!list.length) return F.deleteDoc(ref);
+      return F.setDoc(ref, { ay: ym, kalemler: list, guncelleme: new Date().toISOString() });
+    },
     // Harcamalar: kullanicilar/{uid}/harcamalar/{YYYY-AA} — ay başına bir belge
     subscribeExpenses(cb) {
       return F.onSnapshot(F.collection(db, "kullanicilar", uid, "harcamalar"), snap => {

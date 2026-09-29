@@ -19,7 +19,7 @@ const dayTotal = d => (d?.adisyonlar || []).reduce((s, a) => s + (Number(a.topla
 
 /* ---------- state ---------- */
 let store = null, user = null, unsub = [];
-let days = {}, loaded = false, oran = 40, expenses = {};
+let days = {}, loaded = false, oran = 40, expenses = {}, savings = {}, savLoaded = false;
 let curDay = today(), curMonth = today().slice(0, 7), tab = "gun";
 let entry = "", note = "", editId = null, delArm = false, delTimer;
 
@@ -31,12 +31,12 @@ function toast(msg, err) { const t = $("#toast"); t.textContent = msg; t.classNa
 function showApp(on) {
   $("#s-auth").hidden = on;
   $("#brand").hidden = !on; $("#bnav").hidden = !on;
-  if (on) showTab(tab); else ["gun", "ay", "harc", "ayar"].forEach(t => $("#s-" + t).hidden = true);
+  if (on) showTab(tab); else ["gun", "ay", "harc", "bir", "ayar"].forEach(t => $("#s-" + t).hidden = true);
 }
 function showTab(t) {
   tab = t;
   document.querySelectorAll(".bnav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
-  ["gun", "ay", "harc", "ayar"].forEach(x => $("#s-" + x).hidden = x !== t);
+  ["gun", "ay", "harc", "bir", "ayar"].forEach(x => $("#s-" + x).hidden = x !== t);
   render();
 }
 document.querySelectorAll(".bnav button").forEach(b => b.onclick = () => { buzz(); showTab(b.dataset.tab); });
@@ -94,7 +94,7 @@ async function boot() {
   catch { $("#aErr").textContent = "Uygulama yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin."; showApp(false); return; }
   store.onAuth(u => {
     unsub.forEach(f => f()); unsub = [];
-    user = u; days = {}; expenses = {}; loaded = false; oran = 40; resetEntry(); xReset();
+    user = u; days = {}; expenses = {}; savings = {}; savLoaded = false; earnedPrev = null; hedef = 0; loaded = false; oran = 40; resetEntry(); xReset(); bReset();
     if (!u) { setMode("in"); showApp(false); return; }
     $("#accEmail").textContent = u.email || "";
     showApp(true);
@@ -104,7 +104,8 @@ async function boot() {
       $("#dbWarn").hidden = true; render();
     }, () => { const w = $("#dbWarn"); w.textContent = "Kayıtlar yüklenemedi. Uygulamayı kapatıp açın."; w.hidden = false; loaded = true; render(); }));
     unsub.push(store.subscribeExpenses(e => { expenses = e; render(); }));
-    unsub.push(store.subscribeSettings(s => { const o = Number(s.oran); if (o > 0 && o < 100 && o !== oran) { oran = o; render(); } }));
+    unsub.push(store.subscribeSavings(v => { savings = v; savLoaded = true; render(); }));
+    unsub.push(store.subscribeSettings(s => { const o = Number(s.oran); if (o > 0 && o < 100 && o !== oran) oran = o; const h = Number(s.hedef); hedef = h > 0 ? h : 0; render(); }));
   });
 }
 
@@ -297,6 +298,21 @@ function renderAy() {
 
 /* ---------- harcamalar ---------- */
 const KATEGORILER = ["Malzeme", "Kira", "Fatura", "Personel", "Diğer"];
+const KAT_RENK = { Malzeme: "#F08C1E", Kira: "#7A5AF8", Fatura: "#2E90FA", Personel: "#12B76A", "Diğer": "#E0457B" };
+const EXTRA_RENK = ["#0BA5B5", "#B54708", "#667085"];
+const katRenk = (k, i) => KAT_RENK[k] || EXTRA_RENK[i % EXTRA_RENK.length];
+function donut(el, parts, centerTop, centerSub) {
+  const tot = parts.reduce((s, p) => s + p.v, 0);
+  const R = 70, W = 22, C = 2 * Math.PI * R; let off = 0;
+  let svg = `<svg viewBox="0 0 180 180" role="img" aria-label="Gider dağılımı pastası"><circle cx="90" cy="90" r="${R}" fill="none" stroke="var(--sunk)" stroke-width="${W}"/>`;
+  if (tot > 0) parts.forEach(p => {
+    const len = p.v / tot * C, gap = parts.length > 1 ? Math.min(2, len / 3) : 0;
+    svg += `<circle cx="90" cy="90" r="${R}" fill="none" stroke="${p.c}" stroke-width="${W}" stroke-dasharray="${Math.max(0, len - gap).toFixed(2)} ${C.toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 90 90)"><title>${esc(p.k)}: ${tl(p.v)}</title></circle>`;
+    off += len;
+  });
+  svg += `<text x="90" y="86" text-anchor="middle" class="dc1">${centerTop}</text><text x="90" y="106" text-anchor="middle" class="dc2">${centerSub}</text></svg>`;
+  el.innerHTML = svg;
+}
 let xMonth = today().slice(0, 7), xEditId = null, xCat = "Malzeme", xDelArm = false, xDelTimer;
 $("#xCats").innerHTML = KATEGORILER.map(k => `<button type="button" class="chip" data-cat="${k}" aria-pressed="false">${k}</button>`).join("");
 $("#xCats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; buzz(); xCat = b.dataset.cat; paintCats(); };
@@ -368,9 +384,14 @@ function renderHarc() {
     + stat("Ciro", tl(ciro)) + statNet("Net kalan", ciro - top, "Ciro − harcama");
   const cats = [...new Set(KATEGORILER.concat(list.map(x => x.kategori)))];
   const byCat = cats.map(k => [k, list.filter(x => x.kategori === k).reduce((s, x) => s + x.tutar, 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  $("#xByCat").innerHTML = byCat.length
-    ? byCat.map(([k, v]) => `<div class="cbar"><span>${esc(k)}</span><span class="tr"><i style="width:${Math.max(2, v / byCat[0][1] * 100)}%"></i></span><b>${tl(v)}</b></div>`).join("")
-    : `<p class="muted" style="margin:4px 0">Bu ay harcama girilmedi.</p>`;
+  const parts = byCat.map(([k, v], i) => ({ k, v, c: katRenk(k, i) }));
+  if (parts.length) {
+    donut($("#xPie"), parts, esc(kfmt(top)) + " ₺", "toplam gider");
+    $("#xLegend").innerHTML = parts.map(p => `<div class="lg"><i style="background:${p.c}"></i><span>${esc(p.k)}</span><em>%${Math.round(p.v / top * 100)}</em><b>${tl(p.v)}</b></div>`).join("");
+  } else {
+    donut($("#xPie"), [], "0 ₺", "gider yok");
+    $("#xLegend").innerHTML = `<p class="muted" style="margin:4px 0">Bu ay harcama girilmedi. Harcama ekledikçe pasta renklenir.</p>`;
+  }
   const box = $("#xList"); box.innerHTML = "";
   if (!list.length) box.innerHTML = `<p class="muted" style="margin:6px 0">Harcama eklediğinizde burada tarih sırasıyla listelenir. Düzeltmek için dokunun.</p>`;
   let lastDay = "";
@@ -384,6 +405,179 @@ function renderHarc() {
   paintXForm();
 }
 paintCats();
+
+/* ---------- birikim + rozetler ---------- */
+let bMonth = today().slice(0, 7), bEditId = null, bTur = "ekle", bDelArm = false, bDelTimer;
+let earnedPrev = null; // rozet kutlaması için: ilk yüklemedeki rozetler
+const signed = x => (x.tur === "cek" ? -1 : 1) * (Number(x.tutar) || 0);
+const monthSave = ym => (savings[ym] || []).reduce((s, x) => s + signed(x), 0);
+const allSave = () => Object.values(savings).flat().reduce((s, x) => s + signed(x), 0);
+const pct = r => "%" + Math.round(r * 100).toLocaleString("tr-TR");
+
+const ROZETLER = [
+  { id: "ilk",   ad: "İlk Adım",          sart: "İlk birikimini ekle",                       renk: "#12B76A", ikon: "M12 20v-7m0 0c0-4 3-6 7-6 0 4-3 6-7 6Zm0 0C12 9 9 7 5 7c0 4 3 6 7 6" },
+  { id: "r25",   ad: "Kumbara",           sart: "Bir ayda giderin %25'i kadar biriktir",     renk: "#2E90FA", esik: 0.25, ikon: "M5 17h14M6 13h12M7 9h10M9 5h6" },
+  { id: "r50",   ad: "Yarı Yolda",        sart: "Bir ayda giderin %50'si kadar biriktir",    renk: "#7A5AF8", esik: 0.5,  ikon: "M12 4a8 8 0 1 0 0 16V4Z" },
+  { id: "r100",  ad: "Başa Baş",          sart: "Bir ayda gider kadar biriktir",             renk: "#F08C1E", esik: 1,    ikon: "M6 9h12M6 15h12" },
+  { id: "r150",  ad: "Tasarruf Ustası",   sart: "Bir ayda giderin 1,5 katını biriktir",      renk: "#E0457B", esik: 1.5,  ikon: "m12 4 2.4 5 5.6.6-4.2 3.8 1.2 5.6L12 16.3 7 19l1.2-5.6L4 9.6 9.6 9Z" },
+  { id: "r200",  ad: "Birikim Şampiyonu", sart: "Bir ayda giderin 2 katını biriktir",        renk: "#D4A20B", esik: 2,    ikon: "M8 4h8v5a4 4 0 0 1-8 0V4Zm4 9v4m-4 3h8M8 6H5a3 3 0 0 0 3 3m8-3h3a3 3 0 0 1-3 3" },
+  { id: "seri3", ad: "Üç Ay Seri",        sart: "3 ay üst üste gider kadar biriktir",        renk: "#0BA5B5", ikon: "M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-4 2-6 2 1 3 3 3 3s1-3 0-7Z" },
+];
+function ratioOf(ym) { const g = monthExp(ym); return g > 0 ? monthSave(ym) / g : null; }
+function evalBadges() {
+  const months = [...new Set(Object.keys(savings).concat(Object.keys(expenses)))].sort();
+  const got = {};
+  const firstDep = Object.keys(savings).sort().find(ym => savings[ym].some(x => x.tur !== "cek"));
+  if (firstDep) got.ilk = firstDep;
+  for (const b of ROZETLER.filter(b => b.esik)) {
+    const ym = months.find(m => { const r = ratioOf(m); return r !== null && r >= b.esik; });
+    if (ym) got[b.id] = ym;
+  }
+  let run = 0, prev = null;
+  for (const ym of months) {
+    const r = ratioOf(ym);
+    const [y, m] = ym.split("-").map(Number), pv = prev && prev.split("-").map(Number);
+    const consecutive = pv && (y * 12 + m) - (pv[0] * 12 + pv[1]) === 1;
+    run = r !== null && r >= 1 ? (consecutive ? run + 1 : 1) : 0;
+    prev = ym;
+    if (run >= 3 && !got.seri3) got.seri3 = ym;
+  }
+  return got;
+}
+function medal(b, on) {
+  return `<svg viewBox="0 0 64 64" class="medal${on ? "" : " off"}" aria-hidden="true">
+    <circle cx="32" cy="32" r="29" fill="${b.renk}"/><circle cx="32" cy="32" r="23" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2"/>
+    <g transform="translate(14 14) scale(1.5)" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${b.ikon}"/></g></svg>`;
+}
+function celebrate(b) {
+  const o = $("#badgePop");
+  o.innerHTML = `${medal(b, true)}<div><small>Yeni rozet kazandınız</small><b>${esc(b.ad)}</b><span>${esc(b.sart)}</span></div>`;
+  o.hidden = false; o.classList.remove("pop"); void o.offsetWidth; o.classList.add("pop");
+  try { navigator.vibrate && navigator.vibrate([30, 60, 30]); } catch {}
+  clearTimeout(o._t); o._t = setTimeout(() => o.hidden = true, 3800);
+}
+function checkNewBadges() {
+  const got = evalBadges();
+  if (earnedPrev === null) { if (savLoaded && loaded) earnedPrev = new Set(Object.keys(got)); return got; }
+  const fresh = ROZETLER.filter(b => got[b.id] && !earnedPrev.has(b.id));
+  fresh.forEach(b => earnedPrev.add(b.id));
+  if (fresh.length) celebrate(fresh[fresh.length - 1]);
+  return got;
+}
+
+/* form */
+const bVal = () => { const v = parseFloat(String($("#bAmt").value).replace(/\s/g, "").replace(/\./g, "").replace(",", ".")); return isFinite(v) && v > 0 ? round2(v) : 0; };
+$("#bAmt").oninput = () => paintBForm();
+$("#bAmt").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("#bSave").click(); } };
+$("#bTur").onclick = e => { const t = e.target.closest("[data-tur]"); if (!t) return; buzz(); bTur = t.dataset.tur; paintBForm(); };
+function bDefaultDate() { return bMonth === today().slice(0, 7) ? today() : bMonth + "-01"; }
+function bReset() { bEditId = null; bDelArm = false; bTur = "ekle"; $("#bAmt").value = ""; $("#bNote").value = ""; $("#bDate").value = bDefaultDate(); paintBForm(); }
+function paintBForm() {
+  const ed = !!bEditId, v = bVal();
+  document.querySelectorAll("#bTur .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.tur === bTur));
+  $("#bFormTitle").textContent = ed ? "Kaydı düzenle" : "Birikim hareketi";
+  $("#bAct").classList.toggle("editing", ed);
+  $("#bCancel").hidden = !ed; $("#bDel").hidden = !ed;
+  if (!bDelArm) $("#bDel").textContent = "Sil";
+  const s = $("#bSave"); s.disabled = v <= 0; s.classList.toggle("wd", bTur === "cek");
+  s.textContent = ed ? "Kaydet" : bTur === "cek" ? (v > 0 ? "Birikimden çek  −" + tl(v) : "Birikimden çek") : (v > 0 ? "Birikime ekle  +" + tl(v) : "Birikime ekle");
+  document.querySelectorAll(".bitem").forEach(r => r.classList.toggle("sel", r.dataset.id === bEditId));
+}
+function saveSav(ym, list) {
+  savings = { ...savings }; if (list.length) savings[ym] = list; else delete savings[ym];
+  render();
+  store.saveSavings(ym, list).catch(() => toast("Birikim kaydedilemedi. Tekrar deneyin.", true));
+}
+function findSav(id) { for (const ym of Object.keys(savings)) { const x = savings[ym].find(e => e.id === id); if (x) return [ym, x]; } return [null, null]; }
+$("#bSave").onclick = () => {
+  const v = bVal(); if (v <= 0) return;
+  const tarih = $("#bDate").value || bDefaultDate(), ym = tarih.slice(0, 7), not = $("#bNote").value.trim();
+  buzz();
+  if (bEditId) {
+    const [oldYm, old] = findSav(bEditId);
+    const upd = { ...old, tutar: v, tur: bTur, tarih, not };
+    if (oldYm && oldYm !== ym) saveSav(oldYm, savings[oldYm].filter(e => e.id !== bEditId));
+    saveSav(ym, (savings[ym] || []).filter(e => e.id !== bEditId).concat(upd));
+    toast("Kayıt düzeltildi");
+  } else {
+    saveSav(ym, (savings[ym] || []).concat({ id: newId(), tutar: v, tur: bTur, tarih, not, eklenme: new Date().toISOString() }));
+    toast(bTur === "cek" ? tl(v) + " birikimden çekildi" : tl(v) + " birikime eklendi");
+  }
+  bMonth = ym; bReset(); render();
+};
+$("#bCancel").onclick = () => { buzz(); bReset(); };
+$("#bDel").onclick = () => {
+  buzz();
+  if (!bDelArm) { bDelArm = true; $("#bDel").textContent = "Emin misin?"; clearTimeout(bDelTimer); bDelTimer = setTimeout(() => { bDelArm = false; paintBForm(); }, 3000); return; }
+  const [ym, x] = findSav(bEditId); bReset();
+  if (ym) { saveSav(ym, savings[ym].filter(e => e.id !== x.id)); toast("Kayıt silindi"); }
+};
+function bEdit(x) {
+  buzz(); bEditId = x.id; bDelArm = false; bTur = x.tur === "cek" ? "cek" : "ekle";
+  $("#bAmt").value = TL.format(x.tutar).replace(/\./g, ""); $("#bDate").value = x.tarih; $("#bNote").value = x.not || "";
+  paintBForm(); $("#bForm").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function bShift(d) { const [y, m] = bMonth.split("-").map(Number); const t = new Date(y, m - 1 + d, 1); bMonth = t.getFullYear() + "-" + pad2(t.getMonth() + 1); bReset(); render(); }
+$("#bPrev").onclick = () => { buzz(); bShift(-1); };
+$("#bNext").onclick = () => { buzz(); bShift(1); };
+
+/* hedef */
+let hedef = 0;
+$("#hedefBtn").onclick = () => { $("#hedefRow").hidden = false; $("#hedefIn").value = hedef ? TL.format(hedef).replace(/\./g, "").replace(/,00$/, "") : ""; $("#hedefIn").focus(); };
+$("#hedefOk").onclick = () => {
+  const v = parseFloat(String($("#hedefIn").value).replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+  hedef = isFinite(v) && v > 0 ? round2(v) : 0; $("#hedefRow").hidden = true; render();
+  store.setHedef(hedef).catch(() => toast("Hedef kaydedilemedi.", true));
+  toast(hedef ? "Hedef: " + tl(hedef) : "Hedef kaldırıldı");
+};
+
+function renderBirikim() {
+  const [y, m] = bMonth.split("-").map(Number);
+  $("#bTitle").textContent = AYLAR[m - 1] + " " + y;
+  $("#bNext").disabled = bMonth >= today().slice(0, 7);
+  $("#bDate").max = today();
+  if (!bEditId && !$("#bDate").value) $("#bDate").value = bDefaultDate();
+  const total = allSave(), ms = monthSave(bMonth), mg = monthExp(bMonth);
+  $("#bStats").innerHTML = `<div class="stat big" style="background:var(--good);border-color:var(--good);color:#fff"><div class="k2">Toplam birikim</div><div class="v">${tl(total)}</div><div class="s">${AYLAR[m - 1]}: ${ms >= 0 ? "+" : "−"}${tl(Math.abs(ms))}</div></div>`
+    + stat("Bu ay birikim", tl(ms)) + stat("Bu ay gider", tl(mg));
+  // oran
+  const r = mg > 0 ? ms / mg : null;
+  const steps = ROZETLER.filter(b => b.esik);
+  const next = r === null ? null : steps.find(b => r < b.esik);
+  const fill = r === null ? 0 : Math.max(0, Math.min(1, r / 2));
+  $("#bRatio").innerHTML = `<div class="rhd"><h3>Birikim / gider</h3><b class="rv">${r === null ? "—" : pct(r)}</b></div>
+    <div class="rtrack"><i style="width:${(fill * 100).toFixed(1)}%"></i>${steps.map(b => `<span class="tick${r !== null && r >= b.esik ? " hit" : ""}" style="left:${b.esik / 2 * 100}%" title="${esc(b.ad)}"></span>`).join("")}</div>
+    <div class="rlab">${steps.map(b => `<span style="left:${b.esik / 2 * 100}%">${pct(b.esik)}</span>`).join("")}</div>
+    <p class="rtx">${r === null ? "Oranı görmek için bu aya harcama girin. Birikiminiz giderlerinize göre ne kadar yüksekse o kadar çok rozet kazanırsınız."
+      : next ? `Bu ay birikim/gider oranınız <b>${pct(r)}</b>. <b>${esc(next.ad)}</b> rozeti için <b>${tl(next.esik * mg - ms)}</b> daha biriktirin.`
+      : `Bu ay birikim/gider oranınız <b>${pct(r)}</b>. Bütün oran rozetlerini kazandınız!`}</p>`;
+  // hedef
+  const hp = hedef > 0 ? Math.max(0, Math.min(1, total / hedef)) : 0;
+  $("#hedefBody").innerHTML = hedef > 0
+    ? `<div class="rhd"><span class="muted">${tl(total)} / ${tl(hedef)}</span><b class="rv">%${Math.round(hp * 100)}</b></div><div class="htrack"><i style="width:${(hp * 100).toFixed(1)}%"></i></div>
+       <p class="rtx">${total >= hedef ? "Hedefinize ulaştınız, tebrikler!" : "Hedefe " + tl(hedef - total) + " kaldı."}</p>`
+    : `<p class="rtx">Bir birikim hedefi koyun (örneğin yeni bir fırın ya da kira depozitosu), ilerlemenizi burada görün.</p>`;
+  $("#hedefBtn").textContent = hedef > 0 ? "Değiştir" : "Hedef koy";
+  // rozetler
+  const got = checkNewBadges();
+  const n = Object.keys(got).length;
+  $("#badgeCount").textContent = n + " / " + ROZETLER.length;
+  $("#badges").innerHTML = ROZETLER.map(b => {
+    const on = !!got[b.id], when = on ? AYLAR[+got[b.id].slice(5) - 1] + " " + got[b.id].slice(0, 4) : "";
+    return `<div class="badge${on ? " on" : ""}">${medal(b, on)}<b>${esc(b.ad)}</b><span>${on ? when : esc(b.sart)}</span></div>`;
+  }).join("");
+  // liste
+  const list = (savings[bMonth] || []).slice().sort((a, b) => b.tarih.localeCompare(a.tarih) || String(b.eklenme).localeCompare(String(a.eklenme)));
+  const box = $("#bList"); box.innerHTML = list.length ? "" : `<p class="muted" style="margin:6px 0">Bu ay birikim hareketi yok.</p>`;
+  list.forEach(x => {
+    const d = parseIso(x.tarih), b = document.createElement("button");
+    b.type = "button"; b.className = "xitem bitem"; b.dataset.id = x.id;
+    b.innerHTML = `<span><span class="xk">${x.tur === "cek" ? "Birikimden çekildi" : "Birikime eklendi"}</span><br><span class="xn">${d.getDate()} ${AYLAR[d.getMonth()]}${x.not ? " · " + esc(x.not) : ""}</span></span><span class="a ${x.tur === "cek" ? "neg" : "pos"}">${x.tur === "cek" ? "−" : "+"}${tl(x.tutar)}</span>`;
+    b.onclick = () => bEditId === x.id ? bReset() : bEdit(x);
+    box.append(b);
+  });
+  paintBForm();
+}
 
 /* ---------- settings ---------- */
 let oranTimer;
@@ -403,7 +597,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 $("#backupBtn").onclick = () => {
-  const data = { uygulama: "Kasa Cepte", surum: 2, tarih: new Date().toISOString(), oran, gunler: days, harcamalar: expenses };
+  const data = { uygulama: "Kasa Cepte", surum: 3, tarih: new Date().toISOString(), oran, hedef, gunler: days, harcamalar: expenses, birikim: savings };
   download("kasacepte-yedek-" + today() + ".json", JSON.stringify(data, null, 1), "application/json");
   toast("Yedek indirildi");
 };
@@ -416,6 +610,10 @@ $("#csvBtn").onclick = () => {
   rows.push([], ["HARCAMALAR"], ["Tarih", "Gün", "Kategori", "", "Tutar", "Not"]);
   Object.keys(expenses).sort().forEach(ym => expenses[ym].slice().sort((a, b) => a.tarih.localeCompare(b.tarih)).forEach(x => {
     const d = parseIso(x.tarih); rows.push([d.toLocaleDateString("tr-TR"), GUNLER[d.getDay()], x.kategori, "", TL.format(x.tutar), x.not || ""]);
+  }));
+  rows.push([], ["BİRİKİM"], ["Tarih", "Gün", "Hareket", "", "Tutar", "Not"]);
+  Object.keys(savings).sort().forEach(ym => savings[ym].slice().sort((a, b) => a.tarih.localeCompare(b.tarih)).forEach(x => {
+    const d = parseIso(x.tarih); rows.push([d.toLocaleDateString("tr-TR"), GUNLER[d.getDay()], x.tur === "cek" ? "Çekildi" : "Eklendi", "", (x.tur === "cek" ? "-" : "") + TL.format(x.tutar), x.not || ""]);
   }));
   const csv = "﻿" + rows.map(r => r.map(c => { const s = String(c); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(";")).join("\r\n");
   download("kasacepte-" + today() + ".csv", csv, "text/csv;charset=utf-8");
@@ -443,10 +641,18 @@ $("#importIn").onchange = async e => {
         .map(x => ({ id: String(x.id || newId()), tutar: round2(x.tutar), kategori: String(x.kategori || "Diğer"), tarih: String(x.tarih || ym + "-01"), not: String(x.not || ""), eklenme: String(x.eklenme || "") }));
       if (fresh.length) { await store.saveExpenses(ym, cur.concat(fresh)); xAdded += fresh.length; }
     }
+    for (const ym of Object.keys(data.birikim || {})) {
+      if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+      const cur = savings[ym] || [], have = new Set(cur.map(x => x.id));
+      const fresh = (data.birikim[ym] || []).filter(x => Number(x.tutar) > 0 && !have.has(String(x.id)))
+        .map(x => ({ id: String(x.id || newId()), tutar: round2(x.tutar), tur: x.tur === "cek" ? "cek" : "ekle", tarih: String(x.tarih || ym + "-01"), not: String(x.not || ""), eklenme: String(x.eklenme || "") }));
+      if (fresh.length) { await store.saveSavings(ym, cur.concat(fresh)); xAdded += fresh.length; }
+    }
+    if (Number(data.hedef) > 0 && !hedef) await store.setHedef(Number(data.hedef));
     if (!added && !xAdded) { toast("Yedekteki kayıtların hepsi zaten bu hesapta var."); return; }
     if (added) await store.importDays(merged);
     const o = Number(data.oran); if (o > 0 && o < 100 && o !== oran) setOran(o);
-    toast(added + " adisyon" + (xAdded ? ", " + xAdded + " harcama" : "") + " yüklendi");
+    toast(added + " adisyon" + (xAdded ? ", " + xAdded + " harcama/birikim kaydı" : "") + " yüklendi");
   } catch { toast("Bu dosya okunamadı. Kasa Cepte yedek dosyası seçin.", true); }
 };
 
@@ -460,7 +666,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.se
 /* ---------- render ---------- */
 function render() {
   if (!user) return;
-  if (tab === "gun") renderDay(); else if (tab === "ay") renderAy(); else if (tab === "harc") renderHarc(); else renderAyar();
+  if (tab === "gun") renderDay(); else if (tab === "ay") renderAy(); else if (tab === "harc") renderHarc(); else if (tab === "bir") renderBirikim(); else renderAyar();
 }
 window.addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(render, 150); });
 // gün değişince (gece yarısını geçen açık uygulama) "Bugün" güncellensin
