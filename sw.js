@@ -1,5 +1,5 @@
 // Kasa Cepte — çevrimdışı çalışma
-const CACHE = "kasacepte-v3";
+const CACHE = "kasacepte-v4";
 const SHELL = ["./", "index.html", "app.js", "store.js", "config.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
@@ -23,6 +23,6 @@ self.addEventListener("fetch", e => {
     fetch(req).then(res => {
       if (res && (res.ok || res.type === "opaque")) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return res;
-    }).catch(() => caches.match(req).then(r => r || (req.mode === "navigate" ? caches.match("index.html") : undefined)))
+    }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === "navigate" ? caches.match("index.html") : undefined)))
   );
 });

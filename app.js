@@ -1,5 +1,14 @@
 // Kasa Cepte — uygulama
-import { createStore, isConfigured } from "./store.js";
+import { createStore, isConfigured } from "./store.js?v=1.2.1";
+export const APP_VERSION = "1.2.1";
+
+// Sürüm uyuşmazlığı: telefonda eski index.html kalmışsa sayfayı bir kez tazeleyerek yeni sürümü al
+if (!document.getElementById("s-bir") || document.documentElement.dataset.ver !== APP_VERSION) {
+  let tried = false; try { tried = sessionStorage.getItem("kc-reload") === APP_VERSION; sessionStorage.setItem("kc-reload", APP_VERSION); } catch {}
+  if (!tried) { location.replace(location.pathname + "?r=" + Date.now()); }
+  const e = document.getElementById("aErr"); if (e) e.textContent = "Uygulama güncelleniyor. Kapatıp birkaç dakika sonra tekrar açın.";
+  throw new Error("Kasa Cepte: dosya sürümleri uyuşmuyor");
+}
 
 const $ = s => document.querySelector(s);
 const TL = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -19,6 +28,7 @@ const dayTotal = d => (d?.adisyonlar || []).reduce((s, a) => s + (Number(a.topla
 
 /* ---------- state ---------- */
 let store = null, user = null, unsub = [];
+let storeReady, storeReadyResolve; storeReady = new Promise(r => storeReadyResolve = r);
 let days = {}, loaded = false, oran = 40, expenses = {}, savings = {}, savLoaded = false;
 let curDay = today(), curMonth = today().slice(0, 7), tab = "gun";
 let entry = "", note = "", editId = null, delArm = false, delTimer;
@@ -70,7 +80,12 @@ $("#authForm").onsubmit = async e => {
   e.preventDefault();
   const email = $("#aEmail").value.trim(), pass = $("#aPass").value, err = $("#aErr");
   err.className = "ferr"; err.textContent = "";
-  if (!store) { err.textContent = "Uygulama henüz hazır değil."; return; }
+  if (!store) {
+    err.className = "fok"; err.textContent = "Bağlanılıyor, lütfen bekleyin…";
+    const ok = await Promise.race([storeReady, new Promise(r => setTimeout(() => r(false), 20000))]);
+    err.className = "ferr"; err.textContent = "";
+    if (!ok || !store) { err.textContent = bootError || "Firebase'e bağlanılamadı. İnternetinizi kontrol edip uygulamayı kapatıp açın."; return; }
+  }
   if (!email) { err.textContent = "E-posta adresinizi yazın."; return; }
   if (mode !== "reset" && pass.length < 6) { err.textContent = "Şifre en az 6 karakter olmalı."; return; }
   const btn = $("#aBtn"); btn.disabled = true;
@@ -88,10 +103,18 @@ $("#authForm").onsubmit = async e => {
 };
 $("#logoutBtn").onclick = async () => { buzz(); await store.signOut(); };
 
+let bootError = "";
 async function boot() {
+  const st = $("#aStat"); if (st) st.textContent = "Kasa Cepte " + APP_VERSION + " · bağlanıyor…";
   if (!window.KASA_FAKE && !isConfigured()) { $("#cfgWarn").hidden = false; $("#aBtn").disabled = true; showApp(false); return; }
   try { store = await createStore(); }
-  catch { $("#aErr").textContent = "Uygulama yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin."; showApp(false); return; }
+  catch (x) {
+    bootError = "Uygulama yüklenemedi (" + (x?.message || x) + "). İnternetinizi kontrol edip uygulamayı kapatıp açın.";
+    $("#aErr").textContent = bootError; if (st) st.textContent = "Kasa Cepte " + APP_VERSION + " · bağlantı yok";
+    storeReadyResolve(false); showApp(false); return;
+  }
+  if (st) st.textContent = "Kasa Cepte " + APP_VERSION + " · hazır";
+  storeReadyResolve(true);
   store.onAuth(u => {
     unsub.forEach(f => f()); unsub = [];
     user = u; days = {}; expenses = {}; savings = {}; savLoaded = false; earnedPrev = null; hedef = 0; loaded = false; oran = 40; resetEntry(); xReset(); bReset();

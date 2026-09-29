@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" data-ver="1.2.1">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -152,12 +152,12 @@ h3{margin:0;font:600 16px var(--display)}
 .step b{min-width:48px;text-align:center;font:600 17px var(--mono)}
 
 /* ---------- bottom nav ---------- */
-.bnav{display:grid;grid-template-columns:repeat(4,1fr);margin-inline:-16px;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bnav{display:grid;grid-template-columns:repeat(5,1fr);margin-inline:-16px;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .bnav button{border:0;background:transparent;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 12px var(--body);color:var(--muted);cursor:pointer}
 .bnav button svg{width:24px;height:24px}
 .bnav button[aria-selected="true"]{color:var(--accent)}
 .bnav button[aria-selected="true"] .pill{background:var(--accent-soft)}
-.pill{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:99px}
+.pill{display:flex;align-items:center;justify-content:center;width:46px;height:30px;border-radius:99px}
 @media (min-width:481px){ .bnav{margin-inline:0;border-radius:14px 14px 0 0;border:1px solid var(--line);border-bottom:0} }
 
 /* ---------- giriş ---------- */
@@ -218,6 +218,60 @@ h3{margin:0;font:600 16px var(--display)}
 .xitem .xn{font-size:13px;color:var(--muted)}
 .xitem .a{font:500 16px var(--mono);color:var(--bad);white-space:nowrap}
 .stat .v.neg{color:var(--bad)}
+.pie{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center}
+@media (max-width:360px){.pie{grid-template-columns:1fr}.pieSvg{max-width:200px;margin:0 auto}}
+.pieSvg svg{width:100%;height:auto;display:block}
+.pieSvg .dc1{font:600 17px var(--mono);fill:var(--ink)}
+.pieSvg .dc2{font:11px var(--body);fill:var(--muted)}
+.legend{display:flex;flex-direction:column;gap:8px;min-width:0}
+.lg{display:grid;grid-template-columns:12px 1fr auto;gap:2px 8px;align-items:center;font-size:14px}
+.lg i{width:12px;height:12px;border-radius:4px;grid-row:span 2}
+.lg span{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg em{font-style:normal;font:600 13px var(--mono);color:var(--muted);text-align:right}
+.lg b{grid-column:2 / 4;font:500 13px var(--mono);color:var(--muted)}
+
+/* ---------- birikim ---------- */
+.go.sav{background:var(--good);color:#fff}
+.go.sav.wd{background:#B54708}
+.bamt:focus-within{border-color:var(--good)}
+.seg{display:grid;grid-template-columns:1fr 1fr}
+.seg .chip{text-align:center}
+.seg .chip[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:#fff}
+.seg .chip[data-tur="cek"][aria-pressed="true"]{background:#B54708;border-color:#B54708}
+.rhd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rv{font:600 22px var(--mono);color:var(--good)}
+.ratio{display:flex;flex-direction:column;gap:8px}
+.rtrack,.htrack{position:relative;height:14px;border-radius:99px;background:var(--sunk);overflow:visible}
+.rtrack i,.htrack i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#12B76A,#0BA5B5 45%,#F08C1E 70%,#D4A20B)}
+.htrack i{background:var(--good)}
+.tick{position:absolute;top:-3px;width:4px;height:20px;margin-left:-2px;border-radius:2px;background:var(--line)}
+.tick.hit{background:var(--ink)}
+.rlab{position:relative;height:16px;font:11px var(--mono);color:var(--muted)}
+.rlab span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.rlab span:last-child{transform:translateX(-100%)}
+.rtx{margin:2px 0 0;font-size:14px;color:var(--muted)}
+.rtx b{color:var(--ink)}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+@media (max-width:340px){.badges{grid-template-columns:repeat(3,1fr)}}
+.badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:8px 4px;border-radius:12px}
+.badge.on{background:var(--bg)}
+.badge b{font-size:13px;line-height:1.2}
+.badge span{font-size:10.5px;color:var(--muted);line-height:1.25}
+.medal{width:50px;height:50px}
+.medal.off{filter:grayscale(1);opacity:.35}
+.badge.on .medal{filter:drop-shadow(0 2px 4px rgb(0 0 0 / .2))}
+.xitem .a.pos{color:var(--good)} .xitem .a.neg{color:#B54708}
+.badgePop{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;padding:12px 18px 12px 12px;box-shadow:0 12px 32px rgb(0 0 0 / .25);max-width:calc(100% - 32px)}
+.badgePop .medal{width:64px;height:64px;flex:none}
+.badgePop small{display:block;font-size:12px;color:var(--good);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.badgePop b{display:block;font:700 18px var(--display)}
+.badgePop span{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){
+  .badgePop.pop{animation:popIn .5s cubic-bezier(.2,1.4,.4,1)}
+  .badgePop.pop .medal{animation:spin .9s ease-out}
+  @keyframes popIn{from{transform:translate(-50%,-20px) scale(.8);opacity:0}to{transform:translate(-50%,0) scale(1);opacity:1}}
+  @keyframes spin{from{transform:rotateY(180deg) scale(.6)}to{transform:none}}
+}
 </style>
 </head>
 <body>
@@ -242,6 +296,7 @@ h3{margin:0;font:600 16px var(--display)}
         <button type="button" class="linkbtn" id="aForgot">Şifremi unuttum</button>
       </div>
     </form>
+    <p class="ver" id="aStat">Kasa Cepte · yükleniyor…</p>
   </section>
 
   <div class="brand" id="brand" hidden>Kasa Cepte<span class="sync" id="sync" title="Eşitlendi"></span></div>
@@ -328,8 +383,51 @@ h3{margin:0;font:600 16px var(--display)}
           <button class="go exp" id="xSave" disabled>Harcama ekle</button>
         </div>
       </div>
-      <div class="card"><h3 style="margin-bottom:6px">Kategoriye göre</h3><div id="xByCat"></div></div>
+      <div class="card"><h3 style="margin-bottom:6px">Gider dağılımı</h3><div class="pie"><div class="chart pieSvg" id="xPie"></div><div class="legend" id="xLegend"></div></div></div>
       <div class="card"><h3>Harcama listesi</h3><div id="xList"></div></div>
+    </div>
+  </section>
+
+  <!-- ===== BİRİKİM ===== -->
+  <section class="screen" id="s-bir" hidden>
+    <div class="scroll">
+      <div class="mhead">
+        <button class="nav-arrow" id="bPrev" aria-label="Önceki ay">‹</button>
+        <h2 id="bTitle">Birikim</h2>
+        <button class="nav-arrow" id="bNext" aria-label="Sonraki ay">›</button>
+      </div>
+      <div class="stats" id="bStats"></div>
+      <div class="card xform" id="bForm">
+        <h3 id="bFormTitle">Birikim hareketi</h3>
+        <div class="chips seg" id="bTur" role="group" aria-label="Hareket türü">
+          <button type="button" class="chip" data-tur="ekle" aria-pressed="true">Birikime ekle</button>
+          <button type="button" class="chip" data-tur="cek" aria-pressed="false">Birikimden çek</button>
+        </div>
+        <div class="xamt bamt"><input id="bAmt" inputmode="decimal" placeholder="0" aria-label="Birikim tutarı" autocomplete="off"><span>₺</span></div>
+        <div class="xrow2">
+          <input type="date" id="bDate" aria-label="Tarih">
+          <input id="bNote" placeholder="Not: banka, altın, kumbara…" maxlength="60" aria-label="Not">
+        </div>
+        <div class="xact" id="bAct">
+          <button class="go sec" id="bCancel" hidden>Vazgeç</button>
+          <button class="go del" id="bDel" hidden>Sil</button>
+          <button class="go sav" id="bSave" disabled>Birikime ekle</button>
+        </div>
+      </div>
+      <div class="card ratio" id="bRatio"></div>
+      <div class="card">
+        <div class="rhd"><h3>Rozetler</h3><span class="muted" id="badgeCount"></span></div>
+        <div class="badges" id="badges"></div>
+      </div>
+      <div class="card">
+        <div class="rhd"><h3>Hedef</h3><button class="sbtn" id="hedefBtn" type="button">Hedef koy</button></div>
+        <div class="noterow" id="hedefRow" hidden style="margin-top:8px">
+          <input id="hedefIn" inputmode="decimal" placeholder="Hedef tutar, örn. 100000" aria-label="Hedef tutar">
+          <button id="hedefOk" type="button">Kaydet</button>
+        </div>
+        <div id="hedefBody"></div>
+      </div>
+      <div class="card"><h3>Bu ayın hareketleri</h3><div id="bList"></div></div>
     </div>
   </section>
 
@@ -349,7 +447,7 @@ h3{margin:0;font:600 16px var(--display)}
         <div class="it"><div class="tx"><b>Yedekten yükle</b><span>Yedek dosyasındaki kayıtları bu hesaba ekler. Mevcut kayıtlar silinmez.</span></div>
           <label class="sbtn" for="importIn">Dosya seç</label><input type="file" id="importIn" class="vh" accept=".json,application/json"></div>
       </div>
-      <p class="ver">Kasa Cepte 1.1</p>
+      <p class="ver">Kasa Cepte 1.2.1</p>
     </div>
   </section>
 
@@ -361,7 +459,10 @@ h3{margin:0;font:600 16px var(--display)}
       <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg></span>Ay
     </button>
     <button role="tab" id="tab-harc" aria-selected="false" data-tab="harc">
-      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/><path d="M7 6V4h10v2"/></svg></span>Harcamalar
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/><path d="M7 6V4h10v2"/></svg></span>Harcama
+    </button>
+    <button role="tab" id="tab-bir" aria-selected="false" data-tab="bir">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 11c0 4-3 7-7 7H9l-1 3H6l-.5-3.5C4 16 3 14 3 11.5 3 8 6.5 5 11 5h1c1-1 2.5-2 4-2l-.5 3c1.8.9 3 2.8 3.5 5Z"/><circle cx="15" cy="10" r=".8" fill="currentColor"/></svg></span>Birikim
     </button>
     <button role="tab" id="tab-ayar" aria-selected="false" data-tab="ayar">
       <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Ayarlar
@@ -369,6 +470,15 @@ h3{margin:0;font:600 16px var(--display)}
   </nav>
 </div>
 <div class="toast" id="toast" hidden></div>
-<script type="module" src="app.js"></script>
+<div class="badgePop" id="badgePop" hidden role="status"></div>
+<script>
+// Beklenmeyen hataları giriş ekranında göster (teşhis için)
+(function(){
+  function show(m){ var e=document.getElementById("aErr"); if(e && !e.textContent) e.textContent="Hata: "+m; }
+  window.addEventListener("error",function(ev){ show((ev.message||"bilinmeyen")+(ev.filename?" ("+ev.filename.split("/").pop()+":"+ev.lineno+")":"")); });
+  window.addEventListener("unhandledrejection",function(ev){ var r=ev.reason||{}; show(r.code||r.message||String(r)); });
+})();
+</script>
+<script type="module" src="app.js?v=1.2.1"></script>
 </body>
 </html>
