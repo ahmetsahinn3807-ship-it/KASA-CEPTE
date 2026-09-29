@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kasa Cepte</title>
+<meta name="description" content="Günlük adisyon ve ciro defteri">
+<meta name="theme-color" content="#1B6682">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF1EE; --surface:#FFFFFF; --sunk:#E3E8E4; --key:#FFFFFF; --key-press:#D5DDD8;
+  --ink:#172026; --muted:#5C6A70; --line:#D3DBD6;
+  --accent:#1B6682; --accent-ink:#FFFFFF; --accent-soft:#D7E8EF; --accent-press:#14526A;
+  --good:#2C7747; --bad:#B0372D; --bad-soft:#F6DEDB; --bar:#1B6682; --bar-dim:#B5CDD6;
+  --display:"Bricolage Grotesque", "Roboto", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Roboto", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", "Roboto Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F1415; --surface:#172022; --sunk:#0A0E0F; --key:#1E282B; --key-press:#2B383C;
+    --ink:#E4EBE9; --muted:#93A1A4; --line:#29353A;
+    --accent:#5AB0CF; --accent-ink:#0A1417; --accent-soft:#18323C; --accent-press:#7CC3DD;
+    --good:#6CC08A; --bad:#EE7E73; --bad-soft:#3A1E1B; --bar:#5AB0CF; --bar-dim:#2B4E5A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1415; --surface:#172022; --sunk:#0A0E0F; --key:#1E282B; --key-press:#2B383C;
+  --ink:#E4EBE9; --muted:#93A1A4; --line:#29353A;
+  --accent:#5AB0CF; --accent-ink:#0A1417; --accent-soft:#18323C; --accent-press:#7CC3DD;
+  --good:#6CC08A; --bad:#EE7E73; --bad-soft:#3A1E1B; --bar:#5AB0CF; --bar-dim:#2B4E5A;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+:root{padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);overscroll-behavior:none}
+button{font-family:inherit;color:inherit;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{height:100%;max-width:480px;margin:0 auto;display:flex;flex-direction:column;padding-inline:16px;background:var(--bg)}
+.brand{font:700 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);text-align:center;padding-top:8px}
+.screen{flex:1;min-height:0;display:flex;flex-direction:column}
+
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;gap:6px;padding-block:2px 4px}
+.nav-arrow{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:transparent;font-size:26px;line-height:1;cursor:pointer;color:var(--ink)}
+.nav-arrow:active{background:var(--sunk)}
+.nav-arrow:disabled{opacity:.25}
+.day-mid{flex:1;min-width:0;text-align:center;position:relative}
+.day-mid b{display:block;font:700 20px/1.15 var(--display)}
+.day-mid span{font-size:13px;color:var(--muted)}
+.day-mid input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.todaybtn{border:0;background:var(--accent-soft);color:var(--accent);font:600 12px var(--body);border-radius:99px;padding:3px 10px;margin-top:2px;cursor:pointer;position:relative;z-index:1}
+
+.sumcard{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);border-radius:14px;padding:10px 14px}
+.sumcard .l{font-size:12px;line-height:1.3;min-width:0}
+.sumcard .l span{opacity:.85;display:block;white-space:nowrap}
+.sumcard .l b{display:block;font-size:14px;white-space:nowrap}
+.sumcard .v{font:600 26px/1 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ---------- tape ---------- */
+.tape{flex:1;min-height:90px;overflow-y:auto;margin-block:8px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;width:100%;border:0;border-bottom:1px dashed var(--line);background:transparent;padding:10px 14px 10px 10px;text-align:left;cursor:pointer;min-height:48px}
+.row:active{background:var(--sunk)}
+.row.sel{background:var(--accent-soft)}
+.row .i{font:12px var(--mono);color:var(--muted);text-align:right}
+.row .t{min-width:0;font-size:13px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.row .t em{font-style:normal;color:var(--ink);font-size:14px}
+.row .a{font:500 18px var(--mono)}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);text-align:center;padding:16px;font-size:14px}
+.empty b{color:var(--ink);font-size:15px}
+
+/* ---------- entry ---------- */
+.entry{display:flex;flex-direction:column;gap:8px;padding-bottom:8px}
+.disp{display:flex;align-items:center;gap:8px;background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:6px 8px 6px 14px;min-height:60px}
+.disp.editing{border-color:var(--good)}
+.disp .mode{font-size:12px;color:var(--muted);line-height:1.2;flex:none;max-width:80px}
+.disp .num{flex:1;text-align:right;font:600 32px/1 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.disp .num.ph{color:var(--muted);opacity:.6}
+.disp .cur{font:500 22px var(--mono);color:var(--muted)}
+.notebtn{flex:none;border:1px solid var(--line);background:var(--bg);border-radius:10px;height:44px;padding:0 10px;font-size:13px;font-weight:600;cursor:pointer;max-width:96px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.notebtn.has{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.noterow{display:flex;gap:8px}
+.noterow input{flex:1;min-width:0;font:16px var(--body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.noterow button{border:0;border-radius:10px;background:var(--sunk);font-weight:600;padding:0 14px;cursor:pointer}
+
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.k{height:clamp(42px,6.4vh,60px);border:0;border-radius:12px;background:var(--key);font:500 24px var(--mono);cursor:pointer;box-shadow:0 1px 0 var(--line);user-select:none}
+.k:active{background:var(--key-press)}
+.k.fn{font-size:20px;color:var(--muted)}
+.actions{display:grid;grid-template-columns:1fr;gap:6px}
+.actions.editing{grid-template-columns:1fr 1fr 2fr}
+.go{height:54px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font:700 19px var(--body);cursor:pointer;letter-spacing:.02em}
+.go:active{background:var(--accent-press)}
+.go:disabled{opacity:.45}
+.go.sec{background:var(--sunk);color:var(--ink);font-size:15px}
+.go.del{background:var(--bad-soft);color:var(--bad);font-size:15px}
+.go.save{background:var(--good);color:#fff}
+
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:99px;font-size:14px;font-weight:500;z-index:5;max-width:calc(100% - 32px);text-align:center;pointer-events:none}
+.toast.err{background:var(--bad);color:#fff}
+.warn{background:var(--bad-soft);color:var(--ink);border-radius:10px;padding:8px 12px;font-size:13px;margin-top:8px}
+
+/* ---------- month ---------- */
+.scroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-block:2px 16px}
+.mhead{display:flex;align-items:center;gap:6px}
+.mhead h2{flex:1;text-align:center;margin:0;font:700 20px var(--display)}
+h3{margin:0;font:600 16px var(--display)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.stat.big{grid-column:1 / -1;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.stat.big .k2,.stat.big .s{color:inherit;opacity:.85}
+.stat .k2{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font:600 19px/1.3 var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat.big .v{font-size:28px}
+.stat .s{font-size:12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font:11px var(--mono)}
+.banner{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:13px}
+.dlist{display:flex;flex-direction:column}
+.drow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;border:0;border-bottom:1px solid var(--line);background:transparent;padding:11px 4px;text-align:left;cursor:pointer;font-variant-numeric:tabular-nums;min-height:48px;width:100%}
+.drow:last-child{border-bottom:0}
+.drow:active{background:var(--sunk)}
+.drow .d b{font-weight:600} .drow .d span{color:var(--muted);font-size:13px}
+.drow .c{font:13px var(--mono);color:var(--muted)}
+.drow .a{font:500 16px var(--mono);white-space:nowrap}
+.muted{color:var(--muted)}
+.split{display:flex;flex-direction:column;gap:12px}
+.split .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.split .bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--sunk)}
+.split .bar i{display:block;background:var(--accent)}
+.split .parts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.split .part{border-radius:10px;padding:10px 12px;min-width:0}
+.split .part.a{background:var(--accent-soft)}
+.split .part.b{background:var(--bg)}
+.split .part .k2{font-size:12px;color:var(--muted);font-weight:600}
+.split .part .v{font:600 20px/1.3 var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.split .part .s{font-size:12px;color:var(--muted)}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:20px;cursor:pointer}
+.step button:active{background:var(--sunk)}
+.step b{min-width:48px;text-align:center;font:600 17px var(--mono)}
+
+/* ---------- bottom nav ---------- */
+.bnav{display:grid;grid-template-columns:1fr 1fr 1fr;margin-inline:-16px;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bnav button{border:0;background:transparent;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 12px var(--body);color:var(--muted);cursor:pointer}
+.bnav button svg{width:24px;height:24px}
+.bnav button[aria-selected="true"]{color:var(--accent)}
+.bnav button[aria-selected="true"] .pill{background:var(--accent-soft)}
+.pill{display:flex;align-items:center;justify-content:center;width:56px;height:30px;border-radius:99px}
+@media (min-width:481px){ .bnav{margin-inline:0;border-radius:14px 14px 0 0;border:1px solid var(--line);border-bottom:0} }
+
+/* ---------- giriş ---------- */
+.auth{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:18px;padding-block:24px}
+.logo{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.logo img{width:72px;height:72px;border-radius:18px}
+.logo h1{margin:0;font:700 30px/1.1 var(--display);letter-spacing:-.01em}
+.logo p{margin:0;color:var(--muted);font-size:14px}
+.form{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.form h2{margin:0 0 4px;font:600 18px var(--display)}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);font-weight:500}
+.form input{font:16px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px}
+.form input:focus{border-color:var(--accent);outline:none}
+.form .go{margin-top:6px}
+.linkbtn{border:0;background:none;color:var(--accent);font:600 14px var(--body);padding:8px;cursor:pointer;text-decoration:underline}
+.links{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px}
+.ferr{color:var(--bad);font-size:14px;min-height:1.2em;margin:0}
+.fok{color:var(--good);font-size:14px;margin:0}
+/* ---------- ayarlar ---------- */
+.set{display:flex;flex-direction:column;gap:2px}
+.set .it{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--line);min-height:56px}
+.set .it:first-child{border-top:0}
+.set .it .tx{min-width:0}
+.set .it .tx b{display:block;font-weight:600}
+.set .it .tx span{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.sbtn{flex:none;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 14px;font:600 14px var(--body);cursor:pointer;color:var(--ink)}
+.sbtn:active{background:var(--sunk)}
+.sbtn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.sbtn.danger{color:var(--bad)}
+.vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+.ver{font-size:12px;color:var(--muted);text-align:center}
+.sync{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-left:6px;vertical-align:middle}
+.sync.off{background:#C8962B}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== GİRİŞ ===== -->
+  <section class="auth" id="s-auth">
+    <div class="logo">
+      <img src="icon-192.png" alt="">
+      <h1>Kasa Cepte</h1>
+      <p>Günlük adisyon ve ciro defteri</p>
+    </div>
+    <div class="banner" id="cfgWarn" hidden>Uygulama henüz bir Firebase projesine bağlanmadı. <b>config.js</b> dosyasına kendi Firebase ayarlarınızı yazın.</div>
+    <form class="form" id="authForm" novalidate>
+      <h2 id="authTitle">Giriş yap</h2>
+      <label>E-posta<input type="email" id="aEmail" autocomplete="email" inputmode="email" required></label>
+      <label id="passWrap">Şifre<input type="password" id="aPass" autocomplete="current-password" minlength="6" required></label>
+      <p class="ferr" id="aErr" role="alert"></p>
+      <button class="go" id="aBtn" type="submit">Giriş yap</button>
+      <div class="links">
+        <button type="button" class="linkbtn" id="aSwitch">Yeni hesap oluştur</button>
+        <button type="button" class="linkbtn" id="aForgot">Şifremi unuttum</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="brand" id="brand" hidden>Kasa Cepte<span class="sync" id="sync" title="Eşitlendi"></span></div>
+
+  <!-- ===== GÜN ===== -->
+  <section class="screen" id="s-gun" hidden>
+    <div class="top">
+      <button class="nav-arrow" id="prevDay" aria-label="Önceki gün">‹</button>
+      <div class="day-mid">
+        <b id="dayTitle">Bugün</b>
+        <span id="dayDate"></span>
+        <input type="date" id="dayPick" aria-label="Tarih seç">
+      </div>
+      <button class="nav-arrow" id="nextDay" aria-label="Sonraki gün">›</button>
+    </div>
+    <div style="text-align:center;margin-top:-4px;margin-bottom:6px" id="todayWrap" hidden><button class="todaybtn" id="toToday">Bugüne dön</button></div>
+    <div class="sumcard">
+      <div class="l"><b id="sumLabel">Günün toplamı</b><span id="sumSub">Henüz adisyon yok</span></div>
+      <div class="v" id="dayTot">0,00 ₺</div>
+    </div>
+    <div class="warn" id="dbWarn" hidden></div>
+    <div class="tape" id="tape"></div>
+    <div class="entry">
+      <div class="noterow" id="noteRow" hidden>
+        <input id="noteIn" placeholder="Not: masa 4, paket, kredi kartı…" maxlength="60" enterkeyhint="done">
+        <button id="noteOk" type="button">Tamam</button>
+      </div>
+      <div class="disp" id="disp">
+        <div class="mode" id="mode">Yeni adisyon</div>
+        <div class="num ph" id="num">0</div><div class="cur">₺</div>
+        <button class="notebtn" id="noteBtn" type="button">+ Not</button>
+      </div>
+      <div class="pad" id="pad">
+        <button class="k" data-k="7">7</button><button class="k" data-k="8">8</button><button class="k" data-k="9">9</button>
+        <button class="k" data-k="4">4</button><button class="k" data-k="5">5</button><button class="k" data-k="6">6</button>
+        <button class="k" data-k="1">1</button><button class="k" data-k="2">2</button><button class="k" data-k="3">3</button>
+        <button class="k fn" data-k=",">,</button><button class="k" data-k="0">0</button><button class="k fn" data-k="back" aria-label="Sil">⌫</button>
+      </div>
+      <div class="actions" id="actions">
+        <button class="go sec" id="cancelBtn" hidden>Vazgeç</button>
+        <button class="go del" id="delBtn" hidden>Sil</button>
+        <button class="go" id="goBtn" disabled>Ekle</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== AY ===== -->
+  <section class="screen" id="s-ay" hidden>
+    <div class="scroll">
+      <div class="mhead">
+        <button class="nav-arrow" id="prevMonth" aria-label="Önceki ay">‹</button>
+        <h2 id="ayTitle">Ay</h2>
+        <button class="nav-arrow" id="nextMonth" aria-label="Sonraki ay">›</button>
+      </div>
+      <div class="banner" id="ayBanner" hidden>Bu ay için kayıt yok.</div>
+      <div class="stats" id="ayStats"></div>
+      <div class="card split" id="splitCard"></div>
+      <div class="card"><h3>Günlere göre ciro</h3><div class="chart" id="ayChart"></div></div>
+      <div class="card"><h3 style="margin-bottom:4px">Gün gün</h3><div class="dlist" id="ayList"></div></div>
+      <div class="card"><h3 id="yilTitle">Yıl</h3><div class="chart" id="yilChart"></div></div>
+    </div>
+  </section>
+
+  <!-- ===== AYARLAR ===== -->
+  <section class="screen" id="s-ayar" hidden>
+    <div class="scroll">
+      <div class="mhead"><h2>Ayarlar</h2></div>
+      <div class="card set">
+        <div class="it"><div class="tx"><b>Hesap</b><span id="accEmail"></span></div><button class="sbtn danger" id="logoutBtn">Çıkış yap</button></div>
+        <div class="it"><div class="tx"><b>Bölüşüm oranı</b><span>Aylık cironun ayrılacak payı</span></div>
+          <div class="step"><button type="button" id="oranDown2" aria-label="Oranı azalt">−</button><b id="oranVal2">%40</b><button type="button" id="oranUp2" aria-label="Oranı artır">+</button></div></div>
+        <div class="it" id="installRow" hidden><div class="tx"><b>Telefona yükle</b><span>Ana ekranda uygulama olarak açılır</span></div><button class="sbtn pri" id="installBtn">Yükle</button></div>
+      </div>
+      <div class="card set">
+        <div class="it"><div class="tx"><b>Excel'e aktar</b><span>Tüm adisyonlar, Excel'de açılan CSV dosyası</span></div><button class="sbtn" id="csvBtn">İndir</button></div>
+        <div class="it"><div class="tx"><b>Yedek al</b><span>Tüm kayıtlarınız tek dosyada</span></div><button class="sbtn" id="backupBtn">İndir</button></div>
+        <div class="it"><div class="tx"><b>Yedekten yükle</b><span>Yedek dosyasındaki kayıtları bu hesaba ekler. Mevcut kayıtlar silinmez.</span></div>
+          <label class="sbtn" for="importIn">Dosya seç</label><input type="file" id="importIn" class="vh" accept=".json,application/json"></div>
+      </div>
+      <p class="ver">Kasa Cepte 1.0</p>
+    </div>
+  </section>
+
+  <nav class="bnav" role="tablist" id="bnav" hidden>
+    <button role="tab" id="tab-gun" aria-selected="true" data-tab="gun">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>Gün
+    </button>
+    <button role="tab" id="tab-ay" aria-selected="false" data-tab="ay">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg></span>Ay
+    </button>
+    <button role="tab" id="tab-ayar" aria-selected="false" data-tab="ayar">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Ayarlar
+    </button>
+  </nav>
+</div>
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

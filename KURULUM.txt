@@ -1,0 +1,79 @@
+KASA CEPTE — KURULUM REHBERİ
+============================
+
+Kasa Cepte iki ücretsiz hizmetle çalışır:
+  • Firebase (Google): giriş (e-posta + şifre) ve kayıtların saklanması
+  • GitHub Pages: uygulamanın internet adresi (örn. ahmet.github.io/kasacepte)
+
+Hepsi telefondan Chrome ile yapılabilir. Bilgisayar varsa daha rahat olur.
+Toplam süre: yaklaşık 30 dakika. Kredi kartı gerekmez.
+
+
+1) FIREBASE PROJESİ
+-------------------
+ 1. console.firebase.google.com adresine Google hesabınızla girin.
+ 2. "Proje oluştur" → ad: kasacepte → Google Analytics'i KAPATIN → Proje oluştur.
+ 3. Sol menü: Derleme (Build) → Authentication → "Başlayın"
+    → "Oturum açma yöntemi" sekmesi → E-posta/Şifre → Etkinleştir → Kaydet.
+ 4. Sol menü: Derleme → Firestore Database → "Veritabanı oluştur"
+    → Konum: eur3 (Europe) → "Üretim modunda başlat" → Oluştur.
+ 5. Firestore'da "Kurallar" (Rules) sekmesine girin. İçindekileri silip
+    firestore.rules dosyasının içeriğini yapıştırın → Yayınla.
+ 6. Sol üstteki dişli → Proje ayarları → Genel → aşağıda "Uygulamalarınız"
+    → </> (Web) simgesi → takma ad: Kasa Cepte → Uygulamayı kaydet.
+    Ekranda firebaseConfig = { apiKey: "...", ... } yazan bir kod çıkar.
+ 7. (TAMAM) config.js, kasa-cepte projenizin bilgileriyle dolduruldu.
+
+
+2) GITHUB PAGES (uygulamanın adresi)
+------------------------------------
+ 1. github.com'da ücretsiz hesap açın. Kullanıcı adınız adresinizde görünür.
+ 2. Sağ üst "+" → New repository → ad: kasacepte → Public → Create repository.
+ 3. "uploading an existing file" bağlantısına dokunun ve bu klasördeki
+    TÜM dosyaları seçip yükleyin (index.html, app.js, store.js, config.js,
+    sw.js, manifest.webmanifest, firestore.rules ve .png simgeler)
+    → Commit changes.
+ 4. Deponun Settings → Pages → Source: "Deploy from a branch"
+    → Branch: main, klasör: / (root) → Save.
+    1–2 dakika sonra adresiniz hazır olur:  KULLANICIADI.github.io/kasacepte
+
+
+3) ADRESE İZİN VERİN
+--------------------
+ Firebase → Authentication → Ayarlar (Settings) → Yetkilendirilmiş alanlar
+ (Authorized domains) → Alan ekle → KULLANICIADI.github.io → Ekle.
+
+
+4) TELEFONA YÜKLEYİN
+--------------------
+ 1. Chrome'da KULLANICIADI.github.io/kasacepte adresini açın.
+ 2. Menü (⋮) → "Uygulamayı yükle" / "Ana ekrana ekle" → Yükle.
+    Artık ana ekranda kendi simgesiyle, adres çubuğu olmadan açılır.
+ 3. "Yeni hesap oluştur" ile e-posta ve şifrenizi belirleyin.
+
+
+5) ESKİ KAYITLARINIZI AKTARIN
+-----------------------------
+ Uygulamada Ayarlar → Yedekten yükle → kasacepte-yedek-2026-09-29.json
+ Bu yedek dosyası AYRI gönderildi. Onu GitHub'a YÜKLEMEYİN: depo herkese açık
+ olduğu için ciro bilgileriniz internette görünür olur. Telefonunuzda saklayın.
+ (Eylül 2026: 25 gün, 198 adisyon, toplam 192.995,00 ₺)
+
+
+YAKINLARINIZ NASIL KULLANIR?
+----------------------------
+ Adresi gönderin. Her kişi "Yeni hesap oluştur" ile kendi e-postası ve
+ şifresiyle hesap açar. Herkesin defteri tamamen ayrıdır; kimse başkasının
+ kayıtlarını göremez (firestore.rules bunu sağlar).
+
+
+GÜNCELLEME YAPINCA
+------------------
+ GitHub'da değişen dosyayı yeniden yükleyin. Telefondaki uygulama bir
+ sonraki açılışta yeni sürümü alır.
+
+
+ÜCRETSİZ KOTA
+-------------
+ Firebase'in ücretsiz planı günde 50.000 okuma ve 20.000 yazmaya izin verir.
+ Birkaç işletmenin günlük adisyonları bunun çok altında kalır.
