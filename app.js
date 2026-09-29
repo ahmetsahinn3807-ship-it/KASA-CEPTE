@@ -19,7 +19,7 @@ const dayTotal = d => (d?.adisyonlar || []).reduce((s, a) => s + (Number(a.topla
 
 /* ---------- state ---------- */
 let store = null, user = null, unsub = [];
-let days = {}, loaded = false, oran = 40;
+let days = {}, loaded = false, oran = 40, expenses = {};
 let curDay = today(), curMonth = today().slice(0, 7), tab = "gun";
 let entry = "", note = "", editId = null, delArm = false, delTimer;
 
@@ -31,12 +31,12 @@ function toast(msg, err) { const t = $("#toast"); t.textContent = msg; t.classNa
 function showApp(on) {
   $("#s-auth").hidden = on;
   $("#brand").hidden = !on; $("#bnav").hidden = !on;
-  if (on) showTab(tab); else ["gun", "ay", "ayar"].forEach(t => $("#s-" + t).hidden = true);
+  if (on) showTab(tab); else ["gun", "ay", "harc", "ayar"].forEach(t => $("#s-" + t).hidden = true);
 }
 function showTab(t) {
   tab = t;
   document.querySelectorAll(".bnav button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
-  ["gun", "ay", "ayar"].forEach(x => $("#s-" + x).hidden = x !== t);
+  ["gun", "ay", "harc", "ayar"].forEach(x => $("#s-" + x).hidden = x !== t);
   render();
 }
 document.querySelectorAll(".bnav button").forEach(b => b.onclick = () => { buzz(); showTab(b.dataset.tab); });
@@ -94,7 +94,7 @@ async function boot() {
   catch { $("#aErr").textContent = "Uygulama yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin."; showApp(false); return; }
   store.onAuth(u => {
     unsub.forEach(f => f()); unsub = [];
-    user = u; days = {}; loaded = false; oran = 40; resetEntry();
+    user = u; days = {}; expenses = {}; loaded = false; oran = 40; resetEntry(); xReset();
     if (!u) { setMode("in"); showApp(false); return; }
     $("#accEmail").textContent = u.email || "";
     showApp(true);
@@ -103,6 +103,7 @@ async function boot() {
       $("#sync").title = pending ? "Eşitleniyor (internet gelince kaydedilecek)" : "Eşitlendi";
       $("#dbWarn").hidden = true; render();
     }, () => { const w = $("#dbWarn"); w.textContent = "Kayıtlar yüklenemedi. Uygulamayı kapatıp açın."; w.hidden = false; loaded = true; render(); }));
+    unsub.push(store.subscribeExpenses(e => { expenses = e; render(); }));
     unsub.push(store.subscribeSettings(s => { const o = Number(s.oran); if (o > 0 && o < 100 && o !== oran) { oran = o; render(); } }));
   });
 }
@@ -254,6 +255,9 @@ function barChart(el, labels, values, { highlight = -1, labelEvery = 1, onClick,
   el.innerHTML = s + `</svg>`;
   if (onClick) el.querySelectorAll("rect[data-i]").forEach(r => r.onclick = () => onClick(+r.dataset.i));
 }
+function statNet(k, n, s) { return `<div class="stat"><div class="k2">${k}</div><div class="v${n < 0 ? " neg" : ""}">${tl(n)}</div><div class="s">${s}</div></div>`; }
+const monthExp = ym => (expenses[ym] || []).reduce((s, x) => s + (Number(x.tutar) || 0), 0);
+const monthCiro = ym => Object.entries(days).filter(([k]) => k.startsWith(ym)).reduce((s, [, v]) => s + dayTotal(v), 0);
 function stat(k, v, s = "", cls = "") { return `<div class="stat ${cls}"><div class="k2">${k}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`; }
 
 function renderAy() {
@@ -267,7 +271,9 @@ function renderAy() {
   const pm = new Date(y, m - 2, 1), pk = pm.getFullYear() + "-" + pad2(pm.getMonth() + 1);
   const prevTot = Object.entries(days).filter(([k]) => k.startsWith(pk)).reduce((s, [, v]) => s + dayTotal(v), 0);
   const cmp = prevTot && tot ? ((tot >= prevTot ? "+" : "") + Math.round((tot - prevTot) / prevTot * 100) + "% " + AYLAR[pm.getMonth()] + " ayına göre") : act + " gün kayıtlı";
-  $("#ayStats").innerHTML = stat("Aylık ciro", tl(tot), cmp, "big") + stat("Günlük ortalama", tl(avg), act + " gün") + stat("En iyi gün", tot ? tl(vals[bi]) : "—", tot ? (bi + 1) + " " + AYLAR[m - 1] + ", " + GUNLER[new Date(y, m - 1, bi + 1).getDay()] : "") + stat("Adisyon sayısı", adc) + stat("Ort. adisyon", adc ? tl(tot / adc) : "—");
+  $("#ayStats").innerHTML = stat("Aylık ciro", tl(tot), cmp, "big") + stat("Günlük ortalama", tl(avg), act + " gün") + stat("En iyi gün", tot ? tl(vals[bi]) : "—", tot ? (bi + 1) + " " + AYLAR[m - 1] + ", " + GUNLER[new Date(y, m - 1, bi + 1).getDay()] : "") + stat("Adisyon sayısı", adc) + stat("Ort. adisyon", adc ? tl(tot / adc) : "—")
+    + stat("Harcamalar", tl(monthExp(curMonth)), (expenses[curMonth] || []).length + " kalem")
+    + statNet("Net kalan", tot - monthExp(curMonth), "Ciro − harcama");
   const pay = round2(tot * oran / 100), kalan = round2(tot - pay);
   $("#splitCard").innerHTML = `<div class="hd"><h3>Aylık bölüşüm</h3>
       <div class="step"><button type="button" id="oranDown" aria-label="Oranı azalt">−</button><b>%${oran}</b><button type="button" id="oranUp" aria-label="Oranı artır">+</button></div></div>
@@ -289,6 +295,96 @@ function renderAy() {
   barChart($("#yilChart"), AYLAR.map(a => a.slice(0, 1)), mv, { highlight: m - 1, onClick: i => { curMonth = y + "-" + pad2(i + 1); render(); $("#s-ay .scroll").scrollTop = 0; } });
 }
 
+/* ---------- harcamalar ---------- */
+const KATEGORILER = ["Malzeme", "Kira", "Fatura", "Personel", "Diğer"];
+let xMonth = today().slice(0, 7), xEditId = null, xCat = "Malzeme", xDelArm = false, xDelTimer;
+$("#xCats").innerHTML = KATEGORILER.map(k => `<button type="button" class="chip" data-cat="${k}" aria-pressed="false">${k}</button>`).join("");
+$("#xCats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; buzz(); xCat = b.dataset.cat; paintCats(); };
+function paintCats() { document.querySelectorAll("#xCats .chip").forEach(c => c.setAttribute("aria-pressed", c.dataset.cat === xCat)); }
+const xVal = () => { const v = parseFloat(String($("#xAmt").value).replace(/\s/g, "").replace(/\./g, "").replace(",", ".")); return isFinite(v) && v > 0 ? round2(v) : 0; };
+$("#xAmt").oninput = () => paintXForm();
+$("#xAmt").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("#xSave").click(); } };
+function xDefaultDate() { return xMonth === today().slice(0, 7) ? today() : xMonth + "-01"; }
+function xReset() {
+  xEditId = null; xDelArm = false; $("#xAmt").value = ""; $("#xNote").value = ""; xCat = "Malzeme";
+  $("#xDate").value = xDefaultDate(); paintCats(); paintXForm();
+}
+function paintXForm() {
+  const ed = !!xEditId, v = xVal();
+  $("#xFormTitle").textContent = ed ? "Harcamayı düzenle" : "Harcama ekle";
+  $("#xAct").classList.toggle("editing", ed);
+  $("#xCancel").hidden = !ed; $("#xDel").hidden = !ed;
+  if (!xDelArm) $("#xDel").textContent = "Sil";
+  const s = $("#xSave"); s.disabled = v <= 0;
+  s.textContent = ed ? "Kaydet" : (v > 0 ? "Harcama ekle  −" + tl(v) : "Harcama ekle");
+  document.querySelectorAll(".xitem").forEach(r => r.classList.toggle("sel", r.dataset.id === xEditId));
+}
+function saveExp(ym, list) {
+  expenses = { ...expenses }; if (list.length) expenses[ym] = list; else delete expenses[ym];
+  render();
+  store.saveExpenses(ym, list).catch(() => toast("Harcama kaydedilemedi. Tekrar deneyin.", true));
+}
+function findExp(id) { for (const ym of Object.keys(expenses)) { const x = expenses[ym].find(e => e.id === id); if (x) return [ym, x]; } return [null, null]; }
+$("#xSave").onclick = () => {
+  const v = xVal(); if (v <= 0) return;
+  const tarih = $("#xDate").value || xDefaultDate(), ym = tarih.slice(0, 7), not = $("#xNote").value.trim();
+  buzz();
+  if (xEditId) {
+    const [oldYm, old] = findExp(xEditId);
+    const upd = { ...old, tutar: v, kategori: xCat, tarih, not };
+    if (oldYm && oldYm !== ym) saveExp(oldYm, expenses[oldYm].filter(e => e.id !== xEditId));
+    saveExp(ym, (expenses[ym] || []).filter(e => e.id !== xEditId).concat(upd));
+    toast("Harcama düzeltildi: " + tl(v));
+  } else {
+    saveExp(ym, (expenses[ym] || []).concat({ id: newId(), tutar: v, kategori: xCat, tarih, not, eklenme: new Date().toISOString() }));
+    toast(xCat + " harcaması eklendi: " + tl(v));
+  }
+  xMonth = ym; xReset(); render();
+};
+$("#xCancel").onclick = () => { buzz(); xReset(); };
+$("#xDel").onclick = () => {
+  buzz();
+  if (!xDelArm) { xDelArm = true; $("#xDel").textContent = "Emin misin?"; clearTimeout(xDelTimer); xDelTimer = setTimeout(() => { xDelArm = false; paintXForm(); }, 3000); return; }
+  const [ym, x] = findExp(xEditId); xReset();
+  if (ym) { saveExp(ym, expenses[ym].filter(e => e.id !== x.id)); toast(tl(x.tutar) + " harcama silindi"); }
+};
+function xEdit(x) {
+  buzz(); xEditId = x.id; xDelArm = false; xCat = x.kategori;
+  $("#xAmt").value = TL.format(x.tutar).replace(/\./g, ""); $("#xDate").value = x.tarih; $("#xNote").value = x.not || "";
+  paintCats(); paintXForm(); $("#s-harc .scroll").scrollTo({ top: 0, behavior: "smooth" });
+}
+function xShift(delta) { const [y, m] = xMonth.split("-").map(Number); const d = new Date(y, m - 1 + delta, 1); xMonth = d.getFullYear() + "-" + pad2(d.getMonth() + 1); xReset(); render(); }
+$("#xPrev").onclick = () => { buzz(); xShift(-1); };
+$("#xNext").onclick = () => { buzz(); xShift(1); };
+function renderHarc() {
+  const [y, m] = xMonth.split("-").map(Number);
+  $("#xTitle").textContent = AYLAR[m - 1] + " " + y;
+  $("#xNext").disabled = xMonth >= today().slice(0, 7);
+  $("#xDate").max = today();
+  if (!xEditId && !$("#xDate").value) $("#xDate").value = xDefaultDate();
+  const list = (expenses[xMonth] || []).slice().sort((a, b) => b.tarih.localeCompare(a.tarih) || String(b.eklenme).localeCompare(String(a.eklenme)));
+  const top = list.reduce((s, x) => s + x.tutar, 0), ciro = monthCiro(xMonth);
+  $("#xStats").innerHTML = `<div class="stat big" style="background:var(--bad);border-color:var(--bad);color:#fff"><div class="k2">Aylık harcama</div><div class="v">${tl(top)}</div><div class="s">${list.length} kalem</div></div>`
+    + stat("Ciro", tl(ciro)) + statNet("Net kalan", ciro - top, "Ciro − harcama");
+  const cats = [...new Set(KATEGORILER.concat(list.map(x => x.kategori)))];
+  const byCat = cats.map(k => [k, list.filter(x => x.kategori === k).reduce((s, x) => s + x.tutar, 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  $("#xByCat").innerHTML = byCat.length
+    ? byCat.map(([k, v]) => `<div class="cbar"><span>${esc(k)}</span><span class="tr"><i style="width:${Math.max(2, v / byCat[0][1] * 100)}%"></i></span><b>${tl(v)}</b></div>`).join("")
+    : `<p class="muted" style="margin:4px 0">Bu ay harcama girilmedi.</p>`;
+  const box = $("#xList"); box.innerHTML = "";
+  if (!list.length) box.innerHTML = `<p class="muted" style="margin:6px 0">Harcama eklediğinizde burada tarih sırasıyla listelenir. Düzeltmek için dokunun.</p>`;
+  let lastDay = "";
+  list.forEach(x => {
+    if (x.tarih !== lastDay) { lastDay = x.tarih; const d = parseIso(x.tarih); const h = document.createElement("div"); h.className = "xday"; h.textContent = d.getDate() + " " + AYLAR[d.getMonth()] + " · " + GUNLER[d.getDay()]; box.append(h); }
+    const b = document.createElement("button"); b.type = "button"; b.className = "xitem"; b.dataset.id = x.id;
+    b.innerHTML = `<span><span class="xk">${esc(x.kategori)}</span>${x.not ? `<br><span class="xn">${esc(x.not)}</span>` : ""}</span><span class="a">−${tl(x.tutar)}</span>`;
+    b.onclick = () => xEditId === x.id ? xReset() : xEdit(x);
+    box.append(b);
+  });
+  paintXForm();
+}
+paintCats();
+
 /* ---------- settings ---------- */
 let oranTimer;
 function setOran(v) {
@@ -307,7 +403,7 @@ function download(name, text, type) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 $("#backupBtn").onclick = () => {
-  const data = { uygulama: "Kasa Cepte", surum: 1, tarih: new Date().toISOString(), oran, gunler: days };
+  const data = { uygulama: "Kasa Cepte", surum: 2, tarih: new Date().toISOString(), oran, gunler: days, harcamalar: expenses };
   download("kasacepte-yedek-" + today() + ".json", JSON.stringify(data, null, 1), "application/json");
   toast("Yedek indirildi");
 };
@@ -317,6 +413,10 @@ $("#csvBtn").onclick = () => {
     const d = parseIso(iso);
     days[iso].adisyonlar.forEach((a, i) => rows.push([d.toLocaleDateString("tr-TR"), GUNLER[d.getDay()], i + 1, hhmm(a.eklenme), TL.format(a.toplam), a.not || ""]));
   });
+  rows.push([], ["HARCAMALAR"], ["Tarih", "Gün", "Kategori", "", "Tutar", "Not"]);
+  Object.keys(expenses).sort().forEach(ym => expenses[ym].slice().sort((a, b) => a.tarih.localeCompare(b.tarih)).forEach(x => {
+    const d = parseIso(x.tarih); rows.push([d.toLocaleDateString("tr-TR"), GUNLER[d.getDay()], x.kategori, "", TL.format(x.tutar), x.not || ""]);
+  }));
   const csv = "﻿" + rows.map(r => r.map(c => { const s = String(c); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(";")).join("\r\n");
   download("kasacepte-" + today() + ".csv", csv, "text/csv;charset=utf-8");
   toast("Excel dosyası indirildi");
@@ -335,10 +435,18 @@ $("#importIn").onchange = async e => {
       const fresh = incoming.filter(a => !have.has(a.id));
       if (fresh.length) { merged[iso] = { adisyonlar: cur.concat(fresh) }; added += fresh.length; }
     }
-    if (!added) { toast("Yedekteki kayıtların hepsi zaten bu hesapta var."); return; }
-    await store.importDays(merged);
+    let xAdded = 0;
+    for (const ym of Object.keys(data.harcamalar || {})) {
+      if (!/^\d{4}-\d{2}$/.test(ym)) continue;
+      const cur = expenses[ym] || [], have = new Set(cur.map(x => x.id));
+      const fresh = (data.harcamalar[ym] || []).filter(x => Number(x.tutar) > 0 && !have.has(String(x.id)))
+        .map(x => ({ id: String(x.id || newId()), tutar: round2(x.tutar), kategori: String(x.kategori || "Diğer"), tarih: String(x.tarih || ym + "-01"), not: String(x.not || ""), eklenme: String(x.eklenme || "") }));
+      if (fresh.length) { await store.saveExpenses(ym, cur.concat(fresh)); xAdded += fresh.length; }
+    }
+    if (!added && !xAdded) { toast("Yedekteki kayıtların hepsi zaten bu hesapta var."); return; }
+    if (added) await store.importDays(merged);
     const o = Number(data.oran); if (o > 0 && o < 100 && o !== oran) setOran(o);
-    toast(added + " adisyon yüklendi (" + Object.keys(merged).length + " gün)");
+    toast(added + " adisyon" + (xAdded ? ", " + xAdded + " harcama" : "") + " yüklendi");
   } catch { toast("Bu dosya okunamadı. Kasa Cepte yedek dosyası seçin.", true); }
 };
 
@@ -352,7 +460,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") navigator.se
 /* ---------- render ---------- */
 function render() {
   if (!user) return;
-  if (tab === "gun") renderDay(); else if (tab === "ay") renderAy(); else renderAyar();
+  if (tab === "gun") renderDay(); else if (tab === "ay") renderAy(); else if (tab === "harc") renderHarc(); else renderAyar();
 }
 window.addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(render, 150); });
 // gün değişince (gece yarısını geçen açık uygulama) "Bugün" güncellensin

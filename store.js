@@ -51,6 +51,20 @@ export async function createStore() {
       return F.setDoc(dayDoc(iso), { tarih: iso, adisyonlar: list, toplam, guncelleme: new Date().toISOString() });
     },
     setOran: oran => F.setDoc(userDoc(), { oran }, { merge: true }),
+    // Harcamalar: kullanicilar/{uid}/harcamalar/{YYYY-AA} — ay başına bir belge
+    subscribeExpenses(cb) {
+      return F.onSnapshot(F.collection(db, "kullanicilar", uid, "harcamalar"), snap => {
+        const out = {};
+        snap.forEach(d => { const v = d.data(); if (v && (v.kalemler || []).length) out[d.id] = v.kalemler; });
+        cb(out);
+      }, () => {});
+    },
+    saveExpenses(ym, list) {
+      const ref = F.doc(db, "kullanicilar", uid, "harcamalar", ym);
+      if (!list.length) return F.deleteDoc(ref);
+      const toplam = Math.round(list.reduce((s, a) => s + (Number(a.tutar) || 0), 0) * 100) / 100;
+      return F.setDoc(ref, { ay: ym, kalemler: list, toplam, guncelleme: new Date().toISOString() });
+    },
     async importDays(daysObj) {
       const ids = Object.keys(daysObj);
       for (let i = 0; i < ids.length; i += 400) {

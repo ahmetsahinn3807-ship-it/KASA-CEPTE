@@ -152,12 +152,12 @@ h3{margin:0;font:600 16px var(--display)}
 .step b{min-width:48px;text-align:center;font:600 17px var(--mono)}
 
 /* ---------- bottom nav ---------- */
-.bnav{display:grid;grid-template-columns:1fr 1fr 1fr;margin-inline:-16px;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bnav{display:grid;grid-template-columns:repeat(4,1fr);margin-inline:-16px;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 .bnav button{border:0;background:transparent;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 12px var(--body);color:var(--muted);cursor:pointer}
 .bnav button svg{width:24px;height:24px}
 .bnav button[aria-selected="true"]{color:var(--accent)}
 .bnav button[aria-selected="true"] .pill{background:var(--accent-soft)}
-.pill{display:flex;align-items:center;justify-content:center;width:56px;height:30px;border-radius:99px}
+.pill{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:99px}
 @media (min-width:481px){ .bnav{margin-inline:0;border-radius:14px 14px 0 0;border:1px solid var(--line);border-bottom:0} }
 
 /* ---------- giriş ---------- */
@@ -191,6 +191,33 @@ h3{margin:0;font:600 16px var(--display)}
 .ver{font-size:12px;color:var(--muted);text-align:center}
 .sync{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--good);margin-left:6px;vertical-align:middle}
 .sync.off{background:#C8962B}
+
+/* ---------- harcamalar ---------- */
+.xform{display:flex;flex-direction:column;gap:10px}
+.xamt{display:flex;align-items:center;gap:8px;background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:4px 12px}
+.xamt:focus-within{border-color:var(--bad)}
+.xamt input{flex:1;min-width:0;border:0;background:transparent;font:600 28px var(--mono);color:var(--ink);text-align:right;padding:8px 0;outline:none}
+.xamt span{font:500 20px var(--mono);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font:600 14px var(--body);cursor:pointer;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.xrow2{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.xrow2 input{font:15px var(--body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.xact{display:grid;grid-template-columns:1fr;gap:6px}
+.xact.editing{grid-template-columns:1fr 1fr 2fr}
+.go.exp{background:var(--bad);color:#fff}
+.cbar{display:grid;grid-template-columns:84px 1fr auto;gap:8px;align-items:center;font-size:14px;padding:5px 0}
+.cbar .tr{height:10px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.cbar .tr i{display:block;height:100%;background:var(--bad);border-radius:99px}
+.cbar b{font:500 14px var(--mono);white-space:nowrap}
+.xday{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:10px 4px 2px}
+.xitem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;padding:10px 4px;text-align:left;cursor:pointer;min-height:48px}
+.xitem:active{background:var(--sunk)}
+.xitem.sel{background:var(--bad-soft)}
+.xitem .xk{font-weight:600;font-size:16px}
+.xitem .xn{font-size:13px;color:var(--muted)}
+.xitem .a{font:500 16px var(--mono);color:var(--bad);white-space:nowrap}
+.stat .v.neg{color:var(--bad)}
 </style>
 </head>
 <body>
@@ -278,6 +305,34 @@ h3{margin:0;font:600 16px var(--display)}
     </div>
   </section>
 
+  <!-- ===== HARCAMALAR ===== -->
+  <section class="screen" id="s-harc" hidden>
+    <div class="scroll">
+      <div class="mhead">
+        <button class="nav-arrow" id="xPrev" aria-label="Önceki ay">‹</button>
+        <h2 id="xTitle">Harcamalar</h2>
+        <button class="nav-arrow" id="xNext" aria-label="Sonraki ay">›</button>
+      </div>
+      <div class="stats" id="xStats"></div>
+      <div class="card xform">
+        <h3 id="xFormTitle">Harcama ekle</h3>
+        <div class="xamt"><input id="xAmt" inputmode="decimal" placeholder="0" aria-label="Harcama tutarı" autocomplete="off"><span>₺</span></div>
+        <div class="chips" id="xCats" role="group" aria-label="Kategori"></div>
+        <div class="xrow2">
+          <input type="date" id="xDate" aria-label="Tarih">
+          <input id="xNote" placeholder="Not: tedarikçi, fatura no…" maxlength="60" aria-label="Not">
+        </div>
+        <div class="xact" id="xAct">
+          <button class="go sec" id="xCancel" hidden>Vazgeç</button>
+          <button class="go del" id="xDel" hidden>Sil</button>
+          <button class="go exp" id="xSave" disabled>Harcama ekle</button>
+        </div>
+      </div>
+      <div class="card"><h3 style="margin-bottom:6px">Kategoriye göre</h3><div id="xByCat"></div></div>
+      <div class="card"><h3>Harcama listesi</h3><div id="xList"></div></div>
+    </div>
+  </section>
+
   <!-- ===== AYARLAR ===== -->
   <section class="screen" id="s-ayar" hidden>
     <div class="scroll">
@@ -294,7 +349,7 @@ h3{margin:0;font:600 16px var(--display)}
         <div class="it"><div class="tx"><b>Yedekten yükle</b><span>Yedek dosyasındaki kayıtları bu hesaba ekler. Mevcut kayıtlar silinmez.</span></div>
           <label class="sbtn" for="importIn">Dosya seç</label><input type="file" id="importIn" class="vh" accept=".json,application/json"></div>
       </div>
-      <p class="ver">Kasa Cepte 1.0</p>
+      <p class="ver">Kasa Cepte 1.1</p>
     </div>
   </section>
 
@@ -304,6 +359,9 @@ h3{margin:0;font:600 16px var(--display)}
     </button>
     <button role="tab" id="tab-ay" aria-selected="false" data-tab="ay">
       <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg></span>Ay
+    </button>
+    <button role="tab" id="tab-harc" aria-selected="false" data-tab="harc">
+      <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/><path d="M7 6V4h10v2"/></svg></span>Harcamalar
     </button>
     <button role="tab" id="tab-ayar" aria-selected="false" data-tab="ayar">
       <span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Ayarlar
